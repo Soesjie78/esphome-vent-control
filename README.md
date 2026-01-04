@@ -6,7 +6,7 @@ Dit project maakt van een standaard ventilatierooster een slim apparaat met behu
 
 Je kunt de firmware direct op je ESP8266 flashen via de browser. Klik op de knop hieronder:
 
-[<img src="https://esphome.io/badge.svg" alt="Installatie Badge">](https://web.esphome.io/?dashboard_import=github://soesjie78/esphome-vent-control/ventcontrol.yaml@main)
+[<img src="[https://img.shields.io/badge/ESPHome-Install-orange?style=for-the-badge&logo=esphome]" alt="Installatie Badge">](https://web.esphome.io/?dashboard_import=github://soesjie78/esphome-vent-control/ventcontrol.yaml@main)
 
 *Let op: Gebruik een browser die WebSerial ondersteunt (Chrome, Edge of Opera).*
 
