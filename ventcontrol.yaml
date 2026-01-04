@@ -15,7 +15,7 @@ esphome:
           id(ventcontrol).make_call().set_value(0).perform();
 
 dashboard_import:
-  package_url: github://soesjie78/esphome-vent-control/ventcontrol.yaml@main
+  package_import_url: github://soesjie78/esphome-vent-control/ventcontrol.yaml@main
   import_full_config: true
 
 packages:
