@@ -7,7 +7,7 @@ esphome:
   friendly_name: ${friendly_name}
   project:
     name: "Soesjie78.VentControl"
-    version: "1.0"
+    version: "1.1"
   on_boot:
     priority: -100 
     then:
