@@ -18,6 +18,12 @@ dashboard_import:
   package_url: github://soesjie78/esphome-vent-control/ventcontrol.yaml@main
   import_full_config: true
 
+packages:
+  remote_package:
+    url: https://github.com/soesjie78/esphome-vent-control
+    file: ventcontrol.yaml
+    refresh: 1d
+
 esp8266:
   board: d1_mini
   restore_from_flash: true
