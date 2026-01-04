@@ -21,6 +21,7 @@ Je kunt de firmware direct op je ESP8266 flashen via de browser. Klik op de knop
 - Micro Servo motor (180 graden)
 - 18650 Batterij + Batterijschild (behorende bij de gebruikte ESP8266)
 - (Optioneel) 6V, 1 of 2W Zonnepaneel
+- Op Makerworld komen binnenkort de 3D print files te staan waarna ik hier een linkje zal plaatsen.
 
 ## ⚙️ Configuratie na installatie
 Zodra de module in Home Assistant staat, kun je de volgende zaken instellen:
