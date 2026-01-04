@@ -60,9 +60,9 @@ text_sensor:
 
 sensor:
   - platform: uptime
-    name: Vent Control Uptime
+    name: Uptime
   - platform: wifi_signal
-    name: Vent Control WiFi Signal
+    name: WiFi Signal
     update_interval: 60s
 
 output:
