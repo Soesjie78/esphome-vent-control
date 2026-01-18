@@ -13,17 +13,18 @@ You can flash the firmware directly to your ESP8266 via your browser. Click the 
 ## ✨ Features
 - **WiFi Setup:** Easily configure WiFi via USB (Improv) or via the built-in hotspot (Captive Portal).
 - **Home Assistant:** Automatic discovery and seamless integration into your dashboard.
-- **Servo Limits:** Set a maximum travel limit (e.g., 80%) to protect your mechanical setup.
+- **Servo Limits:** Set a maximum travel limit in time to protect your mechanical setup.
+- **Servo Limits:** Set a maximum speed limit. Keep in mind that the lower the speed, the less powerfull the servo is.
 - **Customizable Direction:** Software-based orientation toggle for left or right mounting.
 
 ## 🛠 Hardware Required
 - ESP8266 (e.g., Wemos D1 Mini)
-- Micro Servo motor (180 degree)
-- 18650 Battery + Battery Shield (compatible with your ESP8266)
+- Micro Servo motor (360 degree)
+- 103450 3.7V Battery + Battery Shield (compatible with your ESP8266)
 - (Optional) 6V, 1W or 2W Solar Panel
 - **3D Files:** STL files will be available on Makerworld soon. I will post the link here once they are live.
 
 ## ⚙️ Post-Installation Configuration
 Once the module is added to Home Assistant, you can configure the following settings:
 1. **Module Orientation:** Select whether the servo is mounted on the left or right side.
-2. **Maximum Swing/Travel:** Set a limit to prevent the servo from overextending and damaging the vent mechanism.
+2. **Maximum Speed/Durstion:** Set a limit to prevent the servo from overextending and damaging the vent mechanism.
