@@ -1,0 +1,193 @@
+substitutions:
+  node_name: "vent-control"
+  friendly_name: "Vent Control"
+  api_encryption_key: "Replace_This_With_A_Generated_Key"
+  ota_password: "Replace_This_With_A_Password"
+
+esphome:
+  name: ${node_name}
+  friendly_name: ${friendly_name}
+  project:
+    name: "Soesjie78.VentControl"
+    version: "1.0"
+  on_boot:
+    priority: -100 
+    then:
+      - lambda: !lambda |-
+          id(servo1).write(0.0);
+
+esp8266:
+  board: d1_mini
+  restore_from_flash: true
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: ${api_encryption_key}
+
+ota:
+  - platform: esphome
+    password: ${ota_password}
+
+improv_serial:
+
+wifi:
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Vent-Control Setup"
+    password: ""
+
+captive_portal:
+
+web_server:
+  port: 80
+
+text_sensor:
+  - platform: version
+    name: ESPHome Version
+  - platform: wifi_info
+    ip_address:
+      name: IP
+    ssid:
+      name: SSID
+    bssid:
+      name: BSSID
+
+sensor:
+  - platform: uptime
+    name: Uptime
+  - platform: wifi_signal
+    name: WiFi Signal
+    update_interval: 60s
+  - platform: adc
+    pin: A0
+    name: "Battery Voltage"
+    id: battery_voltage
+    update_interval: 15min
+    unit_of_measurement: "V"
+    device_class: "voltage"
+    state_class: "measurement"
+    accuracy_decimals: 2
+    internal: true
+    filters:
+      - multiply: 4.2
+  - platform: template
+    name: "Battery"
+    id: battery_percentage
+    unit_of_measurement: "%"
+    device_class: "battery"
+    state_class: "measurement"
+    accuracy_decimals: 0
+    lambda: |-
+      float percentage = (id(battery_voltage).state - 3.0) / (4.2 - 3.0) * 100.0;
+      if (percentage > 100.0) return 100.0;
+      if (percentage < 0.0) return 0.0;
+      return percentage;
+
+output:
+  - platform: esp8266_pwm
+    id: output1
+    pin: D4
+    frequency: 50 Hz
+
+servo:
+  - id: servo1
+    output: output1
+    auto_detach_time: 3s # shutdown power to servo after x seconds
+    transition_length: 1s # speed of servo, with 0s being the fastes
+    min_level: 3% # calibration
+    idle_level: 7.5% # calibration
+    max_level: 12.5% # calibration 
+
+script:
+  - id: open_vent_script
+    then:
+      - lambda: |-
+          float limit = id(maxspeed).state;
+          float set_value = 0;
+
+          if (id(moduleorientation).current_option() == std::string("Left")) {
+            set_value = limit;
+          } else {
+            set_value = -limit;
+          }
+          id(servo1).write(set_value/100);
+      - delay: !lambda 'return id(servo_spin_time).state;'
+      - lambda: |-
+          id(servo1).write(0.0);
+
+  - id: close_vent_script
+    then:
+      - lambda: |-
+          float limit = id(maxspeed).state;
+          float set_value = 0;
+
+           if (id(moduleorientation).current_option() == std::string("Left")) {
+            set_value = -limit;
+          } else {
+            set_value = limit;
+          }
+          id(servo1).write(set_value/100);
+      - delay: !lambda 'return id(servo_spin_time).state;'
+      - lambda: |-
+          id(servo1).write(0.0);
+
+button:
+  - platform: template
+    name: "Vent Close"
+    id: vent_close
+    icon: "mdi:air-filter"
+    on_press:
+      then:
+        - script.execute: close_vent_script
+  - platform: template
+    name: "Vent Open"
+    id: vent_open
+    icon: "mdi:air-filter"
+    on_press:
+      then:
+        - script.execute: open_vent_script
+
+number:
+  - platform: template
+    name: "Spin Time"
+    optimistic: true
+    id: servo_spin_time
+    step: 1
+    entity_category: config
+    restore_value: true
+    initial_value: 1000 # Standard 1 second (1000 ms)
+    min_value: 500
+    max_value: 5000
+    unit_of_measurement: "ms"
+    mode: box
+    icon: mdi:clock-time-eight
+  - platform: template
+    name: "Max Speed (10-100%)"
+    id: maxspeed
+    initial_value: 80
+    restore_value: true
+    min_value: 10
+    max_value: 100
+    optimistic: true
+    mode: box
+    unit_of_measurement: "%"
+    step: 1
+    icon: mdi:arrow-oscillating
+    entity_category: config
+
+select:
+  - platform: template
+    name: "Module orientation"
+    id: moduleorientation
+    optimistic: True
+    options:
+      - Left
+      - Right
+    restore_value: True
+    initial_option: Left
+    icon: mdi:orbit-variant
+    entity_category: config
