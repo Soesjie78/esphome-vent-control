@@ -1,101 +1,98 @@
 substitutions:
-  node_name: "vent-control"
-  friendly_name: "Vent Control"
-  api_encryption_key: "Replace_This_With_A_Generated_Key"
-  ota_password: "Replace_This_With_A_Password"
+  helper_entity: "input_select.vent_<room>"
+  device_name: "vent-control-<room>"
+  friendly_name: "Vent Control <room>"
+  tlv: "<put_you_tlv_code_here>"
 
 esphome:
-  name: ${node_name}
+  name: ${device_name}
   friendly_name: ${friendly_name}
-  project:
-    name: "Soesjie78.VentControl"
-    version: "1.0"
   on_boot:
-    priority: -100 
+    priority: -100
     then:
-      - lambda: !lambda |-
-          id(servo1).write(0.0);
+      - switch.turn_on: bat_meas_enable
+      - wait_until:
+          api.connected:
+      - wait_until:
+          time.has_time:
+      - delay: 5s
+      - deep_sleep.enter: deep_sleep_control
 
-esp8266:
-  board: d1_mini
-  restore_from_flash: true
+time:
+  - platform: homeassistant
+    id: homeassistant_time
 
-# Enable logging
-logger:
+globals:
+  - id: vorige_stand
+    type: std::string
+    restore_value: yes
 
-# Enable Home Assistant API
+esp32:
+  board: dfrobot_firebeetle2_esp32c6
+  variant: esp32c6
+  framework:
+    type: esp-idf
+    version: recommended 
+
+deep_sleep:
+  id: deep_sleep_control
+  sleep_duration: 20min
+
+openthread:
+  tlv: ${tlv}
+
+network:
+  enable_ipv6: true
+
 api:
-  encryption:
-    key: ${api_encryption_key}
-
-ota:
-  - platform: esphome
-    password: ${ota_password}
-
-improv_serial:
-
-wifi:
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Vent-Control Setup"
-    password: ""
-
-captive_portal:
-
-web_server:
-  port: 80
-
-text_sensor:
-  - platform: version
-    name: ESPHome Version
-  - platform: wifi_info
-    ip_address:
-      name: IP
-    ssid:
-      name: SSID
-    bssid:
-      name: BSSID
-
-sensor:
-  - platform: uptime
-    name: Uptime
-  - platform: wifi_signal
-    name: WiFi Signal
-    update_interval: 60s
-  - platform: adc
-    pin: A0
-    name: "Battery Voltage"
-    id: battery_voltage
-    update_interval: 15min
-    unit_of_measurement: "V"
-    device_class: "voltage"
-    state_class: "measurement"
-    accuracy_decimals: 2
-    internal: true
-    filters:
-      - multiply: 4.2
-  - platform: template
-    name: "Battery"
-    id: battery_percentage
-    unit_of_measurement: "%"
-    device_class: "battery"
-    state_class: "measurement"
-    accuracy_decimals: 0
-    lambda: |-
-      float percentage = (id(battery_voltage).state - 3.0) / (4.2 - 3.0) * 100.0;
-      if (percentage > 100.0) return 100.0;
-      if (percentage < 0.0) return 0.0;
-      return percentage;
+  reboot_timeout: 0s
 
 output:
-  - platform: esp8266_pwm
-    id: output1
-    pin: D4
-    frequency: 50 Hz
+  - platform: ledc
+    id: servo_pwm
+    pin: GPIO1
+    frequency: 50Hz
+
+sensor:
+  - platform: adc
+    pin: GPIO0
+    id: battery_voltage
+    name: "Batterij Voltage"
+    entity_category: diagnostic
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 30s
+    attenuation: auto
+    filters:
+      - multiply: 2.0
+  - platform: copy
+    source_id: battery_voltage
+    name: "Battery Percentage"
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    filters:
+      - calibrate_linear:
+          - 3.20 -> 0
+          - 3.60 -> 10
+          - 3.70 -> 20
+          - 3.85 -> 50
+          - 4.00 -> 85
+          - 4.15 -> 100
+      - clamp:
+          min_value: 0
+          max_value: 100
+  - platform: template
+    name: "Vent last seen"
+    id: last_seen
+    icon: "mdi:clock-check"
+    lambda: |-
+      return id(homeassistant_time).now().timestamp;
+    device_class: timestamp
+    entity_category: diagnostic
 
 servo:
   - id: servo1
-    output: output1
+    output: servo_pwm
     auto_detach_time: 3s # shutdown power to servo after x seconds
     transition_length: 1s # speed of servo, with 0s being the fastes
     min_level: 3% # calibration
@@ -135,21 +132,22 @@ script:
       - lambda: |-
           id(servo1).write(0.0);
 
-button:
+switch:
   - platform: template
-    name: "Vent Close"
-    id: vent_close
-    icon: "mdi:air-filter"
-    on_press:
-      then:
-        - script.execute: close_vent_script
-  - platform: template
-    name: "Vent Open"
-    id: vent_open
-    icon: "mdi:air-filter"
-    on_press:
-      then:
-        - script.execute: open_vent_script
+    name: "Ventilatie Stand"
+    id: vent_target_state
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - script.execute: open_vent_script
+    on_turn_off:
+      - script.execute: close_vent_script
+  - platform: gpio
+    pin: GPIO15
+    id: bat_meas_enable
+    name: "Battery Measure Enable"
+    restore_mode: ALWAYS_ON
+    internal: true
 
 number:
   - platform: template
@@ -191,3 +189,24 @@ select:
     initial_option: Left
     icon: mdi:orbit-variant
     entity_category: config
+
+text_sensor:
+  - platform: homeassistant
+    name: "Vent Stand"
+    entity_id: ${helper_entity}
+    id: gewenste_stand
+    on_value:
+      then:
+        - lambda: |-
+            if (x != id(vorige_stand)) {
+                if (x == "Open") {
+                id(open_vent_script).execute();
+              } else if (x == "Dicht") {
+                id(close_vent_script).execute();
+              }
+              id(vorige_stand) = x;
+              ESP_LOGD("custom", "Nieuwe stand ontvangen van Home Assistant: %s", x.c_str());
+            } else {
+              ESP_LOGD("custom", "Stand is nog hetzelfde (%s), servo blijft stil.", x.c_str());
+            }
+            
