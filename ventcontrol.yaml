@@ -201,7 +201,7 @@ text_sensor:
             if (x != id(vorige_stand)) {
                 if (x == "Open") {
                 id(open_vent_script).execute();
-              } else if (x == "Dicht") {
+              } else if (x == "Close") {
                 id(close_vent_script).execute();
               }
               id(vorige_stand) = x;
