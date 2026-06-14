@@ -1,6 +1,7 @@
-# 🌬️ Smart Vent Controller
+🛠️ Smart Solar-Powered Ventilation Control (Matter / Home Assistant)
+Convert your standard home ventilation grill or window register into a smart, energy-independent ventilation system! This 3D-printed project mounts a servo motor to your ventilation control and uses a super energy-efficient ESP32-C6 (FireBeetle 2) to operate automatically via Home Assistant (Matter/Thread or WiFi).
 
-This project transforms a standard ventilation grille into a smart device using an ESP8266 and a servo motor.
+Thanks to advanced deep sleep optimization, this project can run entirely on a small LiPo battery topped up by a tiny solar panel!
 
 ## 🚀 Quick Installation
 
@@ -10,21 +11,12 @@ You can flash the firmware directly to your ESP8266 via your browser. Click the 
 
 *Note: Please use a browser that supports WebSerial (Chrome, Edge, or Opera).*
 
-## ✨ Features
-- **WiFi Setup:** Easily configure WiFi via USB (Improv) or via the built-in hotspot (Captive Portal).
-- **Home Assistant:** Automatic discovery and seamless integration into your dashboard.
-- **Servo Limits:** Set a maximum travel limit in time to protect your mechanical setup.
-- **Servo Limits:** Set a maximum speed limit. Keep in mind that the lower the speed, the less powerfull the servo is.
-- **Customizable Direction:** Software-based orientation toggle for left or right mounting.
+✨ Features
+Smart Home Integration: Works natively with Home Assistant and Matter via ESPHome.
+Extreme Battery Life: The controller stays in ultra-low-power Deep Sleep, waking up every 20 minutes to sync and check for new commands. No massive battery needed!
+Zero Latency "Queuing": Uses a Home Assistant Helper (input_select). You can change the desired position at any time in your dashboard; the device picks it up instantly the moment it wakes up.
+Smart Memory: The servo only moves if the requested position has actually changed, saving tons of mechanical wear and battery power.
+Solar Ready: Designed around the DFRobot FireBeetle 2 form factor for easy solar charging integration.
 
-## 🛠 Hardware Required
-- ESP8266 (e.g., Wemos D1 Mini)
-- Micro Servo motor (360 degree)
-- 103450 3.7V Battery + Battery Shield (compatible with your ESP8266)
-- (Optional) 6V, 1W or 2W Solar Panel
-- **3D Files:** STL files will be available on Makerworld soon. I will post the link here once they are live.
 
-## ⚙️ Post-Installation Configuration
-Once the module is added to Home Assistant, you can configure the following settings:
-1. **Module Orientation:** Select whether the servo is mounted on the left or right side.
-2. **Maximum Speed/Durstion:** Set a limit to prevent the servo from overextending and damaging the vent mechanism.
+Further information can be foud at the Makerworld 3D model houding area: https://makerworld.com/en/models/2931636-smart-solar-vent-control-matter-home-assistant#profileId-3281956
