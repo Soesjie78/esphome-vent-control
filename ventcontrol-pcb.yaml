@@ -1,0 +1,228 @@
+# Vent Control - firmware for the custom PCB in hardware/ (ESP32-C6-MINI-1-N4)
+#
+# Differences from ventcontrol.yaml (FireBeetle 2 ESP32-C6):
+#   * board: bare ESP32-C6 module (4 MB flash)
+#   * GPIO2 switches the servo supply (P-MOSFET). The servo is powered ONLY
+#     while it moves, so it draws nothing during deep sleep.
+#   * GPIO18 drives the green status LED (only blinks on warnings/errors).
+#   Unchanged: servo signal GPIO1, battery voltage GPIO0 (1M/1M divider, x2).
+
+substitutions:
+  helper_entity: "input_select.vent_<room>"
+  device_name: "vent-control-<room>"
+  friendly_name: "Vent Control <room>"
+  tlv: "<put_you_tlv_code_here>"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    priority: -100
+    then:
+      - wait_until:
+          api.connected:
+      - wait_until:
+          time.has_time:
+      - delay: 5s
+      # never sleep in the middle of a servo move (servo supply must be switched off first)
+      - wait_until:
+          condition:
+            - not:
+                - script.is_running: open_vent_script
+            - not:
+                - script.is_running: close_vent_script
+      - deep_sleep.enter: deep_sleep_control
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+globals:
+  - id: vorige_stand
+    type: std::string
+    restore_value: yes
+
+esp32:
+  board: esp32-c6-devkitc-1
+  variant: esp32c6
+  flash_size: 4MB
+  framework:
+    type: esp-idf
+    version: recommended
+
+deep_sleep:
+  id: deep_sleep_control
+  sleep_duration: 20min
+
+openthread:
+  tlv: ${tlv}
+
+network:
+  enable_ipv6: true
+
+api:
+  reboot_timeout: 0s
+
+status_led:
+  pin: GPIO18
+
+output:
+  - platform: ledc
+    id: servo_pwm
+    pin: GPIO1
+    frequency: 50Hz
+
+sensor:
+  - platform: adc
+    pin: GPIO0
+    id: battery_voltage
+    name: "Batterij Voltage"
+    entity_category: diagnostic
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 30s
+    attenuation: auto
+    filters:
+      - multiply: 2.0
+  - platform: copy
+    source_id: battery_voltage
+    name: "Battery Percentage"
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    filters:
+      - calibrate_linear:
+          - 3.20 -> 0
+          - 3.60 -> 10
+          - 3.70 -> 20
+          - 3.85 -> 50
+          - 4.00 -> 85
+          - 4.15 -> 100
+      - clamp:
+          min_value: 0
+          max_value: 100
+  - platform: template
+    name: "Vent last seen"
+    id: last_seen
+    icon: "mdi:clock-check"
+    lambda: |-
+      return id(homeassistant_time).now().timestamp;
+    device_class: timestamp
+    entity_category: diagnostic
+
+servo:
+  - id: servo1
+    output: servo_pwm
+    auto_detach_time: 3s
+    transition_length: 1s
+    min_level: 3%
+    idle_level: 7.5%
+    max_level: 12.5%
+
+script:
+  - id: open_vent_script
+    then:
+      - switch.turn_on: servo_power
+      - delay: 50ms # let the supply settle (soft-start ~1 ms)
+      - lambda: |-
+          float limit = id(maxspeed).state;
+          float set_value = (id(moduleorientation).current_option() == std::string("Left")) ? limit : -limit;
+          id(servo1).write(set_value / 100);
+      - delay: !lambda 'return id(servo_spin_time).state;'
+      - lambda: |-
+          id(servo1).write(0.0);
+      - delay: 300ms
+      - servo.detach: servo1
+      - switch.turn_off: servo_power
+
+  - id: close_vent_script
+    then:
+      - switch.turn_on: servo_power
+      - delay: 50ms
+      - lambda: |-
+          float limit = id(maxspeed).state;
+          float set_value = (id(moduleorientation).current_option() == std::string("Left")) ? -limit : limit;
+          id(servo1).write(set_value / 100);
+      - delay: !lambda 'return id(servo_spin_time).state;'
+      - lambda: |-
+          id(servo1).write(0.0);
+      - delay: 300ms
+      - servo.detach: servo1
+      - switch.turn_off: servo_power
+
+switch:
+  - platform: template
+    name: "Ventilatie Stand"
+    id: vent_target_state
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - script.execute: open_vent_script
+    on_turn_off:
+      - script.execute: close_vent_script
+  - platform: gpio
+    pin: GPIO2
+    id: servo_power
+    name: "Servo Power"
+    restore_mode: ALWAYS_OFF
+    internal: true
+
+number:
+  - platform: template
+    name: "Spin Time"
+    optimistic: true
+    id: servo_spin_time
+    step: 1
+    entity_category: config
+    restore_value: true
+    initial_value: 1000
+    min_value: 500
+    max_value: 5000
+    unit_of_measurement: "ms"
+    mode: box
+    icon: mdi:clock-time-eight
+  - platform: template
+    name: "Max Speed (10-100%)"
+    id: maxspeed
+    initial_value: 80
+    restore_value: true
+    min_value: 10
+    max_value: 100
+    optimistic: true
+    mode: box
+    unit_of_measurement: "%"
+    step: 1
+    icon: mdi:arrow-oscillating
+    entity_category: config
+
+select:
+  - platform: template
+    name: "Module orientation"
+    id: moduleorientation
+    optimistic: True
+    options:
+      - Left
+      - Right
+    restore_value: True
+    initial_option: Left
+    icon: mdi:orbit-variant
+    entity_category: config
+
+text_sensor:
+  - platform: homeassistant
+    name: "Vent Stand"
+    entity_id: ${helper_entity}
+    id: gewenste_stand
+    on_value:
+      then:
+        - lambda: |-
+            if (x != id(vorige_stand)) {
+              if (x == "Open") {
+                id(open_vent_script).execute();
+              } else if (x == "Close") {
+                id(close_vent_script).execute();
+              }
+              id(vorige_stand) = x;
+              ESP_LOGD("custom", "Nieuwe stand ontvangen van Home Assistant: %s", x.c_str());
+            } else {
+              ESP_LOGD("custom", "Stand is nog hetzelfde (%s), servo blijft stil.", x.c_str());
+            }

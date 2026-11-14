@@ -20,3 +20,10 @@ Solar Ready: Designed around the DFRobot FireBeetle 2 form factor for easy solar
 
 
 Further information can be foud at the Makerworld 3D model houding area: https://makerworld.com/en/models/2931636-smart-solar-vent-control-matter-home-assistant#profileId-3281956
+
+## 🔌 Custom PCB (optional)
+
+Prefer a single board instead of a FireBeetle + loose wiring? [`hardware/`](hardware/README.md) contains a
+36 × 50 mm KiCad 7 design based on the ESP32-C6-MINI-1. It has a TP4056 solar/USB LiPo charger, a 3.3 V low-Iq LDO,
+battery measurement, and a MOSFET that switches the servo supply completely off during deep sleep. Gerbers, BOM and CPL
+for JLCPCB assembly are included. Use [`ventcontrol-pcb.yaml`](ventcontrol-pcb.yaml) as the firmware for this board.
